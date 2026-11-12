@@ -1,0 +1,56 @@
+# Every assumption of the project lives here (handoff section 5).
+# Each value is a sensitivity knob: change it here, never inside the code.
+
+data:
+  class_file: data/raw/USATECH.IDXUSD_1h_2020-07-01_to_2025-06-30_UTC.csv
+  # Fingerprint of the untouched class file. A test fails if the file ever changes.
+  class_file_sha256: 8d8d962ecae2baf889c74bfe43a92ca2b0b60a77d7babc2107d98683d5e05060
+  session_timezone: America/New_York   # daily close = 16:00 New York time
+  daily_close_hour: 16
+  fred_series:
+    implied_vol: VXNCLS      # VXN daily close, vol points (25 = 25%)
+    rate: DGS3MO             # 3-month T-bill, percent per year
+    comparison_vol: VIXCLS   # chart only, never a signal
+  chain_symbols: ["^NDX", "QQQ"]   # NDX matches our index; QQQ is more liquid
+  chain_target_days: [7, 30, 60]
+
+sample:
+  in_sample: ["2020-07-01", "2023-12-31"]
+  out_of_sample: ["2024-01-01", "2025-06-30"]   # run once with frozen parameters
+
+portfolio:
+  starting_capital: 1000000
+  contract_multiplier: 1      # option on 1 index point x multiplier
+  dividend_yield: 0.007       # test 0.005 to 0.010
+
+strategy:
+  mode: short                 # short (MVP) | two_sided (target) | long (comparison)
+  structure: atm_straddle     # alt: strangle_25d
+  tenor_days: 30              # grid: 7, 30, 60
+  term_structure: vxn_flat    # reuse VXN for all tenors; alt: chain_ratio
+  threshold_vol_points: 2     # grid: 0, 2, 4, 6
+  entry: close_t              # robustness: close_t_plus_1
+  holding: to_expiry          # alt: exit_on_flip
+
+vol_forecast:
+  model: ewma                 # ewma | garch | har_rv
+  ewma_lambda: 0.94
+  garch_refit: monthly
+
+hedge:
+  frequency: daily            # 1h | 4h | daily | band
+  delta_band: 0.10
+  cost_bps: 1.0               # grid: 0.5 to 3
+
+option_costs:
+  source: chain               # half bid-ask from the chain by moneyness
+  fallback_half_spread: 0.02  # 2% of mid if the chain is unusable
+  fallback_skew: flat
+
+var:
+  horizon_days: 1
+  confidence: [0.99, 0.95]
+  window: 500
+  primary_method: historical  # historical | parametric | monte_carlo
+  mc_draws: 10000
+  cap_pct_capital: 0.02       # grid: 0.01, 0.02, 0.03
