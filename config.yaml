@@ -38,8 +38,7 @@ vol_forecast:
   garch_refit: monthly
 
 hedge:
-  frequency: daily            # 1h | 4h | daily | band
-  delta_band: 0.10
+  frequency: daily            # decided 2026-11-12: daily only, at the 16:00 New York close
   cost_bps: 1.0               # grid: 0.5 to 3
 
 option_costs:

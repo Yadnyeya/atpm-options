@@ -74,8 +74,7 @@ Cache raw downloads in `data/raw/` with the download date in the file name.
 | Structure | ATM straddle | alt: 25-delta strangle (skew-adjusted vol) |
 | Entry | daily, at the 16:00 ET close, using VXN(t) | robustness: enter next day's close with VXN(t) (removes 15-min VXN timing gap) |
 | Holding | to expiry, then roll if signal still on | alt: exit when signal flips |
-| Hedge frequency | daily | grid: 1h, 4h, daily, delta band ±0.10 |
-| Intraday vol for Greeks | latest **known** VXN close (yesterday's for intraday bars) | never a later value |
+| Hedge frequency | daily, at the 16:00 ET close | decided 2026-11-12: daily only, no intraday (1h/4h/band) hedging |
 | Hedge cost | 1 bp of traded notional | grid: 0.5–3 bp |
 | Option cost | half bid-ask from chain by moneyness | fallback 2% of mid |
 | VaR | 1-day, 99% (95% also), plus Expected Shortfall | |
@@ -88,7 +87,7 @@ Cache raw downloads in `data/raw/` with the download date in the file name.
 ### 6.1 Data prep
 - Load, parse UTC, convert to America/New_York for session logic.
 - Quality report table: row counts, date range, gaps (separate normal closures from true gaps), zero/negative prices, OHLC inconsistencies (high < max(open,close) etc.), extreme returns (> 8σ: investigate and log, do not delete).
-- Resample to 4h and daily (O first, H max, L min, C last); daily anchored at the 16:00 ET close with Sunday folded into Monday.
+- Resample to daily (O first, H max, L min, C last); no 4h bars are needed (hedging is daily only); daily anchored at the 16:00 ET close with Sunday folded into Monday.
 - Log returns; annualization factor computed from the actual bars-per-year in the data (not 252×6.5).
 - Merge VXN and rate onto the daily table, forward-filling only from the past.
 - Save processed parquet/CSV + a data dictionary (column, unit, source).
@@ -108,10 +107,10 @@ Cache raw downloads in `data/raw/` with the download date in the file name.
 - gap_t = VXN_t − forecast_t (vol points). Sell if gap > +θ; buy if gap < −θ (two_sided/long); else flat. θ grid: 0, 2, 4, 6.
 
 ### 6.5 Backtest engine with delta hedging
-- Event loop on hourly bars; option decisions at daily 16:00 ET closes; hedge rebalances on the chosen frequency.
+- Event loop on daily bars; option decisions and the hedge rebalance both happen at the daily 16:00 ET close.
 - Track per position: strike(s), expiry, quantity, entry vol, Greeks.
-- Mark options daily with that day's VXN (so vega P&L appears); intraday hedges use last known VXN.
-- No hedging when the CFD is closed; gap moves land in P&L (report worst gaps).
+- Mark options daily with that day's VXN (so vega P&L appears).
+- Moves between two daily closes are unhedged and land in P&L (report the worst days).
 - Daily ledger: option MTM change, hedge P&L, interest on cash at r, option costs, hedge costs, net P&L, equity, net delta/gamma/vega, VaR, ES.
 - P&L attribution per day: delta, ½ΓΔS² (gamma), Θ·dt (theta), ν·Δσ (vega), residual. Small residual = consistency check.
 
@@ -126,8 +125,8 @@ Cache raw downloads in `data/raw/` with the download date in the file name.
 - Stress tests: replay 2022 bear market and April 2025 sell-off windows; hypothetical shock (index −10%, VXN +15 points overnight).
 
 ### 6.7 Optimization and robustness
-- In-sample grid: θ × tenor × structure × hedge frequency × vol model × VaR cap (keep it small; prune if slow).
-- Show heatmaps (e.g. θ × tenor; hedge frequency × cost). Prefer parameter sets whose neighbours also perform well over the single best cell.
+- In-sample grid: θ × tenor × structure × vol model × VaR cap (keep it small; prune if slow).
+- Show heatmaps (e.g. θ × tenor; θ × hedge cost; tenor × VaR cap). Prefer parameter sets whose neighbours also perform well over the single best cell.
 - Freeze the choice, run out-of-sample once, report as is.
 - Optional walk-forward: rolling 2-year fit, 6-month test.
 - Sensitivities: q, costs, skew steeper/flatter, entry-timing variant.
@@ -183,12 +182,12 @@ Notebooks call functions in `src/`; logic lives in `src/`. Every function has a 
 | Phase | Deliverable | Done when |
 |---|---|---|
 | 0. Setup | repo, venv, requirements, config.yaml, git init | `pytest` runs (empty OK) |
-| 1. Data | quality report, processed 1h/4h/daily, merged VXN + rate, data dictionary, sanity plots | timestamp convention verified; ~252 days/yr; no look-ahead in merge |
+| 1. Data | quality report, processed 1h/daily, merged VXN + rate, data dictionary, sanity plots | timestamp convention verified; ~252 days/yr; no look-ahead in merge |
 | 2. Pricer | BSM + Greeks + chain snapshot + skew/spread curves | three pricer checks pass |
 | 3. Vol forecast + signal | EWMA, GARCH (HAR-RV later), gap series, signal | forecast vs VXN chart looks sensible |
 | 4. MVP backtest | `short` mode, ATM straddle, 30d, daily hedge, cost model, ledger, attribution | equity curve + metrics table; residual small |
 | 5. VaR (MVP) | historical-sim VaR/ES, sizing cap, breaches, Kupiec | VaR line chart + test result |
-| 6. Extend | `two_sided` and `long` modes, 1h/4h/band hedging, parametric + MC VaR, stress tests, HAR-RV | all methods compared in one table |
+| 6. Extend | `two_sided` and `long` modes, parametric + MC VaR, stress tests, HAR-RV | all methods compared in one table |
 | 7. Optimize | IS grid, heatmaps, frozen choice, OOS run, benchmarks, sensitivities | IS vs OOS metric table |
 | 8. Report assets | all charts in section 6.10, results tables, README with run order | one-command / ordered-notebook rerun reproduces everything |
 
