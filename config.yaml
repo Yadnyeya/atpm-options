@@ -6,7 +6,28 @@ data:
   # Fingerprint of the untouched class file. A test fails if the file ever changes.
   class_file_sha256: 8d8d962ecae2baf889c74bfe43a92ca2b0b60a77d7babc2107d98683d5e05060
   session_timezone: America/New_York   # daily close = 16:00 New York time
+  # Hour at which the closing bar ENDS. The file stamps each bar with its OPEN
+  # time, so the closing bar is the one stamped 15:00 New York, not 16:00.
   daily_close_hour: 16
+  # The CFD pauses 17:00-18:00 New York every day and reopens at 18:00 (also
+  # on Sunday). A gap that crosses this pause is a normal closure.
+  session_open_hour: 18
+  # Days when the cash market closed at 13:00 New York (day after Thanksgiving,
+  # Christmas Eve, 3 July). The hourly bars cannot reveal these on their own,
+  # so they are listed here. On these days the close is the bar ending 13:00.
+  early_close_hour: 13
+  early_close_dates: ["2020-11-27", "2020-12-24", "2021-11-26", "2022-11-25",
+                      "2023-07-03", "2023-11-24", "2024-07-03", "2024-11-29",
+                      "2024-12-24"]
+  # A FRED value may be carried forward at most this many calendar days
+  # (largest gap seen: 3, a bond-market holiday on a Monday). Longer = error.
+  fred_max_stale_days: 5
+  # Hourly returns beyond this many robust standard deviations are listed in
+  # the quality report (kept, never deleted).
+  extreme_return_sigmas: 8
+  # A bar whose open is further than this many basis points from the previous
+  # bar's close (no closure in between) is listed in the quality report.
+  open_jump_bp: 10
   fred_series:
     implied_vol: VXNCLS      # VXN daily close, vol points (25 = 25%)
     rate: DGS3MO             # 3-month T-bill, percent per year

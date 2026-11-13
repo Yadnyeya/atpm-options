@@ -1,0 +1,27 @@
+check,count,detail,how_handled
+hourly rows,29508,2020-07-01 04:00 to 2025-07-01 04:00 UTC,all rows kept
+duplicate timestamps,0,,none found
+timestamps out of order,0,,none found
+missing values in price columns,0,,none found
+zero or negative prices,0,,none found
+OHLC inconsistencies,0,"high below open/close, or low above open/close",none found
+flat bars (open = high = low = close),1,2023-02-20 18:00 UTC,kept
+close equal to the previous bar's close,7,"2020-07-21 08:00, 2020-12-07 12:00, 2021-03-03 06:00, 2021-05-03 22:00, 2021-05-30 23:00, 2022-07-04 12:00, 2022-12-14 05:00 UTC",kept: gives a zero hourly return
+open more than 10 bp from the previous close,12,largest 27 bp at 2023-11-29 14:00 UTC (back-to-back bars only),"kept: returns use closes only, so these do not enter any return"
+bars outside the CFD session,0,"stamped 17:00 New York, on Saturday, or on Sunday before 18:00",none found: confirms stamps are bar-open times
+normal closures,1291,2h x 993; 5h x 2; 6h x 29; 7h x 2; 9h x 1; 26h x 1; 29h x 2; 49h x 5; 50h x 233; 51h x 5; 53h x 4; 54h x 2; 57h x 2; 74h x 9; 77h x 1,flagged after_closure; return kept but spans more than 1 hour
+closures that reopen later than 18:00 New York,1,2025-05-26 19:00 New York,kept and counted as a closure; the bars before the late reopen are missing
+data gaps inside a session,3,"4 bars missing; first bar after each gap: 2023-07-12 13:00, 2024-07-19 08:00, 2024-12-17 16:00 UTC",flagged after_data_gap; not filled or interpolated
+hourly returns beyond 8 robust sigmas,224,"robust sigma 0.1551%; largest +7.42% at 2025-04-09 17:00 UTC; 12 follow a closure; by year: 2020 23, 2021 17, 2022 113, 2023 17, 2024 13, 2025 41","kept: real market moves, the tail a short-vol strategy must survive"
+tick_activity values that are not whole numbers,29507,"raw 'volume' column: a vendor activity measure of unknown unit, not a count and not traded volume",renamed tick_activity; never used as a signal
+bars after the last close in the file,8,belong to an unfinished trading day,kept in hourly with no trading_day; not in daily
+trading days,1255,"per year: 2020 128, 2021 252, 2022 251, 2023 250, 2024 252, 2025 122",one daily row each
+early-close days (13:00 New York),9,"2020-11-27, 2020-12-24, 2021-11-26, 2022-11-25, 2023-07-03, 2023-11-24, 2024-07-03, 2024-11-29, 2024-12-24",flagged early_close; close = bar ending 13:00
+trading days holding more than 24 hourly bars,36,day after a holiday: the CFD-only holiday session has no cash close,holiday bars folded into the next trading day; see n_bars
+trading days holding fewer than 23 hourly bars,9,"2020-07-01 (16), 2020-12-24 (20), 2023-07-03 (20), 2023-07-12 (22), 2023-11-27 (22), 2024-07-03 (20), 2024-07-19 (21), 2024-12-17 (22), 2024-12-24 (20)","kept as they are: partial first day, early closes, data gaps, no afternoon session after an early close; see n_bars"
+first trading day is partial,1,"2020-07-01 has 16 bars; file starts at 00:00 New York, mid-session",close valid; log_return and realized_var left empty (no previous close)
+Sunday-dated daily rows,0,,none found: Sunday evening folds into Monday
+VXNCLS values on non-trading days,2,"2021-04-02, 2021-12-24; 2 of 2 repeat the previous value","ignored: the calendar comes from the class file, not from FRED"
+VXNCLS carried forward from an earlier day,0,oldest value used is 0 calendar days old,filled from the past only; see vxn_stale_days
+DGS3MO carried forward from an earlier day,9,oldest value used is 3 calendar days old,filled from the past only; see rate_stale_days
+VIXCLS carried forward from an earlier day,0,oldest value used is 0 calendar days old,filled from the past only; see vix_stale_days

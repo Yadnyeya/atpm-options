@@ -1,0 +1,32 @@
+column,table,unit,source,description
+time_utc,hourly,UTC timestamp,class file,Bar open time (index).
+open,hourly,index points,class file,First price of the hour.
+high,hourly,index points,class file,Highest price of the hour.
+low,hourly,index points,class file,Lowest price of the hour.
+close,hourly,index points,class file,Last price of the hour.
+tick_activity,hourly,vendor units,class file,"Raw 'volume' column: vendor activity measure of unknown unit, not traded volume. Not used."
+time_ny,hourly,New York timestamp,derived,Bar open time in New York.
+bar_end_ny,hourly,New York timestamp,derived,Bar open + 1 hour: the time at which 'close' was observed.
+gap_hours,hourly,hours,derived,Time since the previous bar's open; 1 for back-to-back bars.
+after_closure,hourly,true/false,derived,"First bar after a normal closure (daily pause, weekend, holiday)."
+after_data_gap,hourly,true/false,derived,First bar after bars missing inside a session.
+log_return,hourly,decimal,derived,ln(close / previous close). Spans gap_hours hours.
+trading_day,hourly,date,derived,Trading day this bar belongs to; empty after the last close.
+date,daily,date,derived,"Trading day (index): all bars after the previous cash close up to this day's close (16:00 to 16:00 New York), labelled by the closing date."
+open,daily,index points,class file,"Open of the first bar after the previous close: about equal to the previous close, NOT the 09:30 cash open."
+high,daily,index points,class file,"Highest hourly high since the previous close, including the evening, the overnight session and any folded holiday session (wider than the cash-session range)."
+low,daily,index points,class file,"Lowest hourly low since the previous close, same span as high."
+close,daily,index points,class file,Close of the bar ending 16:00 New York (13:00 on early-close days).
+n_bars,daily,count,derived,Hourly bars in the trading day (usually 23).
+close_time_ny,daily,New York timestamp,derived,Moment the daily close was observed.
+early_close,daily,true/false,config,Cash market closed at 13:00.
+log_return,daily,decimal,derived,ln(close / previous close).
+realized_var,daily,"decimal, per day",derived,"Sum of squared hourly log returns from the previous close to this close, including the returns across the 17:00 pause, weekends and folded holiday sessions, so it is comparable with the squared daily log_return. Annualize: x trading days per year."
+vxn_points,daily,vol points (25 = 25%),FRED VXNCLS,"Cboe Nasdaq-100 30-day implied vol, latest value on or before the date. Same-day value, published shortly after the 16:00 close; shift one row for a value strictly known at the close."
+vxn_stale_days,daily,calendar days,derived,Age of vxn_points; 0 = same day.
+vxn_decimal,daily,decimal per year,FRED VXNCLS,vxn_points / 100.
+rate,daily,decimal per year,FRED DGS3MO,"3-month T-bill yield / 100, used as the risk-free rate. Latest value on or before the date; a same-day value is published after the 16:00 close (shift one row for a strictly known value)."
+rate_stale_days,daily,calendar days,derived,Age of rate; 0 = same day.
+vix_points,daily,vol points,FRED VIXCLS,"VIX, comparison chart only."
+vix_stale_days,daily,calendar days,derived,Age of vix_points; 0 = same day.
+sample,daily,label,config,in_sample or out_of_sample.
