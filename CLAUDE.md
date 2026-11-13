@@ -21,6 +21,62 @@ You are taking over the coding of a graduate class project. Everything below was
 4. Deliverables: well-documented code (explain each step and key decision), backtest with performance metrics, a report with charts and insights, slides.
 5. Never modify the raw data file. Keep it read-only in `data/raw/`.
 
+## Architecture (simple version, chosen 2026-11-12)
+
+Hold the Nasdaq-100 (USATECH), buy puts as protection, measure risk with VaR.
+Sections 3, 5, 6 and 9 below still describe the earlier straddle plan; where they
+disagree, this diagram wins until they are rewritten.
+
+```
++------------------+  +------------------+  +------------------+
+| USATECH hourly   |  | FRED: VXN,       |  | Option chain     |
+| class CSV        |  | 3-month T-bill   |  | snapshot (2026)  |
++------------------+  +------------------+  +------------------+
+         |                     |                     |
+         v                     v                     |
++----------------------------------------+           |
+| 1. data_prep.py               [done]   |           |
+|    daily 16:00 New York close          |           |
+|    + VXN + rate                        |           |
++----------------------------------------+           |
+         |                                           |
+         v                                           v
++--------------------------------------------------------------+
+| 2. pricing.py                                                |
+|    Black-Scholes put price, delta, gamma, vega (vol = VXN)   |
+|    checks: put-call parity, bump-and-reprice, chain mids     |
+|    chain also gives the bid-ask cost                         |
++--------------------------------------------------------------+
+               |                                |
+               v                                v
++-----------------------------+  +-----------------------------+
+| 3. backtest.py              |  | 4. var_engine.py            |
+|    HEDGE ENGINE             |  |    RISK ENGINE              |
+|    hold $1M of the index    |  |    today's book x last 500  |
+|    buy 25-delta puts        |->|    days of index+VXN moves  |
+|    beta -> 0.6 at each roll |  |    full reprice             |
+|    roll every 30 days       |  |    VaR 99/95 + ES           |
+|    daily ledger             |  |    hedged vs unhedged       |
++-----------------------------+  +-----------------------------+
+               |                                |
+               v                                v
++--------------------------------------------------------------+
+| 5. metrics.py + optimize.py                                  |
+|    return, drawdown, Sharpe; VaR breaches + Kupiec test      |
+|    heatmap: put delta x target beta; stress 2022, Apr 2025   |
+|    tune on 2020-2023 -> freeze -> run once on 2024-2025      |
++--------------------------------------------------------------+
+                               |
+                               v
++--------------------------------------------------------------+
+| 6. plots.py  ->  results/figures/, results/tables/           |
++--------------------------------------------------------------+
+```
+
+Each day at the 16:00 New York close: mark puts (Black-Scholes, VXN) -> roll if
+expired -> update ledger -> VaR on the new book. Arrows show data flow; nothing
+feeds back from the risk engine into the hedge.
+
 ## 3. Strategy in plain words
 
 Options are insurance on the Nasdaq-100. **VXN** (Cboe Nasdaq-100 volatility index) is the market's daily price of that insurance (30-day implied vol). The **class data** tells us how much the index actually moves. We forecast realized vol from the class data; if VXN is well above our forecast, options are expensive → **sell** a straddle; if well below → **buy** one; otherwise stay flat. We **delta-hedge** with the underlying so we only bet on the size of moves, not direction. A **VaR engine** sizes positions and reports daily risk.
